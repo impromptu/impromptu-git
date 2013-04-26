@@ -1,0 +1,37 @@
+{
+  "name": "impromptu-git",
+  "description": "A git module for Impromptu.",
+  "version": "0.1.0-dev",
+  "homepage": "http://impromptu.sh/",
+  "author": "Impromptu Team (http://impromptu.sh/)",
+  "contributors": [
+    "Daryl Koopersmith (http://darylkoop.com/)",
+    "Evan Solomon (http://evansolomon.me/)"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Impromptu/impromptu-git.git"
+  },
+  "bugs": {
+    "url": "https://github.com/impromptu/impromptu-git/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/impromptu/impromptu-git/blob/master/LICENSE-MIT"
+    }
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/*.coffee --compilers coffee:coffee-script"
+  },
+  "dependencies": {
+    "gift": "~0.0.5"
+  },
+  "devDependencies": {
+    "coffee-script": "~1.6.2",
+    "mocha": "~1.8.2",
+    "should": "~1.2.2"
+  },
+  "keywords": []
+}
