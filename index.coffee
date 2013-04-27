@@ -17,7 +17,6 @@ module.exports = (Impromptu) ->
 
   @register 'isDetachedHead', (done) ->
     branch = repo?.getHead()
-    console.log branch
     done null, ! /^refs\/heads\//.test branch
 
   @register 'aheadBehind', (done) ->
