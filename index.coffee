@@ -15,5 +15,10 @@ module.exports = (Impromptu) ->
     branch = repo?.getShortHead()
     done null, branch
 
+  @register 'isDetachedHead', (done) ->
+    branch = repo?.getHead()
+    console.log branch
+    done null, ! /^refs\/heads\//.test branch
+
   @register 'aheadBehind', (done) ->
     done null, repo?.getAheadBehindCount()
