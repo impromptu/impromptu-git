@@ -25,9 +25,12 @@ STATUS_CODE_MAP =
 module.exports = (Impromptu) ->
   @name 'git'
 
+  # Expose the repo object from the git-utils library
+  # This will be null when we're not in a repo
   @register 'repo', (done) ->
     done null, repo
 
+  # Helper to figure out if we're in a repo at all
   @register 'isRepo', (done) ->
     done null, !! repo
 
