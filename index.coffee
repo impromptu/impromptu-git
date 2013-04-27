@@ -1,5 +1,7 @@
 git = require 'git-utils'
 
+repo = git.open '.'
+
 STATUS_CODE_MAP =
   1:
     desc: 'added'
@@ -22,7 +24,9 @@ STATUS_CODE_MAP =
 
 module.exports = (Impromptu) ->
   @name 'git'
-  repo = git.open '.'
+
+  @register 'repo', (done) ->
+    done null, repo
 
   @register 'isRepo', (done) =>
     done null, !! repo
