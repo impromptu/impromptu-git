@@ -62,13 +62,13 @@ module.exports = (Impromptu) ->
   # Each has a count of commits that your repo is ahead/behind its upstream
   #
   # This command *must* be passed through a formatter before its displayed
-  @register 'aheadBehind', (done) ->
+  @register '_aheadBehind', (done) ->
     done null, repo?.getAheadBehindCount()
 
   # Returns an array of objects with 'path', 'code', 'staged', 'desc'
   #
   # This command *must* be passed through a formatter before its displayed
-  @register 'status', (done) ->
+  @register '_status', (done) ->
     return done null, [] unless status = repo?.getStatus()
 
     statuses = for path, code of status
@@ -88,7 +88,7 @@ module.exports = (Impromptu) ->
   # Get the number of "untracked" files
   # Untracked is defined as new files that are not staged
   @register 'untracked', (done) ->
-    @get 'status', (err, statuses) ->
+    @get '_status', (err, statuses) ->
       statuses = _filter_statuses_by_desc(statuses, 'added')
       count = _.where(statuses, {staged: false}).length
       done err, count
@@ -96,21 +96,21 @@ module.exports = (Impromptu) ->
   # Get the number of modified files
   # Does not matter whether or not they are staged
   @register 'modified', (done) ->
-    @get 'status', (err, statuses) ->
+    @get '_status', (err, statuses) ->
       count = _filter_statuses_by_desc(statuses, 'modified').length
       done err, count
 
   # Get the number of deleted files
   # Does not matter whether or not they are staged
   @register 'deleted', (done) ->
-    @get 'status', (err, statuses) ->
+    @get '_status', (err, statuses) ->
       count = _filter_statuses_by_desc(statuses, 'deleted').length
       done err, count
 
   # Get the number of "added" files
   # Added is defined as new files that are staged
   @register 'added', (done) ->
-    @get 'status', (err, statuses) ->
+    @get '_status', (err, statuses) ->
       statuses = _filter_statuses_by_desc statuses, 'added'
       count = _.where(statuses, {staged: true}).length
       done err, count
