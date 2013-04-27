@@ -24,7 +24,7 @@ STATUS_CODE_MAP =
     staged: false
 
 _filter_statuses_by_desc = (statuses, desc) ->
-  _.filter (statuses || []), (status) ->
+  _.filter statuses, (status) ->
     STATUS_CODE_MAP[status.code]?.desc is desc
 
 
@@ -70,7 +70,7 @@ module.exports = (Impromptu) ->
   # This command *must* be passed through a formatter before its displayed
   @register 'status', (done) ->
     status = repo?.getStatus()
-    done null, '' unless status
+    done null, [] unless status
 
     statuses = []
     for path, code of status
