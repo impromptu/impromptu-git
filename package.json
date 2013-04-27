@@ -27,7 +27,8 @@
     "preinstall": "command -v brew >/dev/null 2>&1 && brew install cmake || { :; }"
   },
   "dependencies": {
-    "git-utils": "~0.15.0"
+    "git-utils": "~0.15.0",
+    "underscore": "~1.4.4"
   },
   "devDependencies": {
     "coffee-script": "~1.6.2",

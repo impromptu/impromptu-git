@@ -1,4 +1,5 @@
 git = require 'git-utils'
+_ = require 'underscore'
 
 repo = git.open '.'
 
@@ -21,6 +22,11 @@ STATUS_CODE_MAP =
   512:
     desc: 'deleted'
     staged: false
+
+_filter_statuses_by_desc = (statuses, desc) ->
+  _.filter (statuses || []), (status) ->
+    STATUS_CODE_MAP[status.code]?.desc is desc
+
 
 module.exports = (Impromptu) ->
   @name 'git'
@@ -85,51 +91,29 @@ module.exports = (Impromptu) ->
   # Get the number of "untracked" files
   # Untracked is defined as new files that are not staged
   @register 'untracked', (done) ->
-    @get 'status', (err, changes) ->
-      done err, 0 unless changes
-
-      count = 0
-      for change in changes
-        details = STATUS_CODE_MAP[change.code]
-        count += 1 if details.desc is 'added' and details.staged is off
-
+    @get 'status', (err, statuses) ->
+      statuses = _filter_statuses_by_desc(statuses, 'added')
+      count = _.where(statuses, {staged: false}).length
       done err, count
 
   # Get the number of modified files
   # Does not matter whether or not they are staged
   @register 'modified', (done) ->
-    @get 'status', (err, changes) ->
-      done err, 0 unless changes
-
-      count = 0
-      for change in changes
-        details = STATUS_CODE_MAP[change.code]
-        count += 1 if details.desc is 'modified'
-
+    @get 'status', (err, statuses) ->
+      count = _filter_statuses_by_desc(statuses, 'modified').length
       done err, count
 
   # Get the number of deleted files
   # Does not matter whether or not they are staged
   @register 'deleted', (done) ->
-    @get 'status', (err, changes) ->
-      done err, 0 unless changes
-
-      count = 0
-      for change in changes
-        details = STATUS_CODE_MAP[change.code]
-        count += 1 if details.desc is 'deleted'
-
+    @get 'status', (err, statuses) ->
+      count = _filter_statuses_by_desc(statuses, 'deleted').length
       done err, count
 
   # Get the number of "added" files
   # Added is defined as new files that are staged
   @register 'added', (done) ->
-    @get 'status', (err, changes) ->
-      done err, 0 unless changes
-
-      count = 0
-      for change in changes
-        details = STATUS_CODE_MAP[change.code]
-        count += 1 if details.desc is 'added' and details.staged is on
-
+    @get 'status', (err, statuses) ->
+      statuses = _filter_statuses_by_desc statuses, 'added'
+      count = _.where(statuses, {staged: true}).length
       done err, count
