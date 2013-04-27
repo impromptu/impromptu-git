@@ -14,3 +14,6 @@ module.exports = (Impromptu) ->
   @register 'branch', (done) ->
     branch = repo?.getShortHead()
     done null, branch
+
+  @register 'aheadBehind', (done) ->
+    done null, repo?.getAheadBehindCount()
