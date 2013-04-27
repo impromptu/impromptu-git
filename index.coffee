@@ -71,19 +71,17 @@ module.exports = (Impromptu) ->
   @register 'status', (done) ->
     return done null, [] unless status = repo?.getStatus()
 
-    statuses = []
-    for path, code of status
+    statuses = for path, code of status
       # Hack around weird behavior in libgit2 that treats nested Git repos as submodules
       # https://github.com/libgit2/libgit2/pull/1423
       #
       # Benchmarking suggests this is likely fast enough
       continue if repo.isIgnored path
 
-      statuses.push
-        path: path
-        code: code
-        staged: STATUS_CODE_MAP[code]?.staged
-        desc: STATUS_CODE_MAP[code]?.desc
+      path: path
+      code: code
+      staged: STATUS_CODE_MAP[code]?.staged
+      desc: STATUS_CODE_MAP[code]?.desc
 
     done null, statuses
 
