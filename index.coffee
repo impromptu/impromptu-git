@@ -28,7 +28,7 @@ module.exports = (Impromptu) ->
   @register 'repo', (done) ->
     done null, repo
 
-  @register 'isRepo', (done) =>
+  @register 'isRepo', (done) ->
     done null, !! repo
 
   # Root path to the repository
