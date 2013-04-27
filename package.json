@@ -23,7 +23,8 @@
   ],
   "main": "index.js",
   "scripts": {
-    "test": "mocha test/*.coffee --compilers coffee:coffee-script"
+    "test": "mocha test/*.coffee --compilers coffee:coffee-script",
+    "preinstall": "command -v brew >/dev/null 2>&1 && brew install cmake"
   },
   "dependencies": {
     "git-utils": "~0.15.0"
