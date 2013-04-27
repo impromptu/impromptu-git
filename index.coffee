@@ -74,3 +74,55 @@ module.exports = (Impromptu) ->
         desc: STATUS_CODE_MAP[code]?.desc
 
     done null, statuses
+
+  # Get the number of "untracked" files
+  # Untracked is defined as new files that are not staged
+  @register 'untracked', (done) ->
+    @get 'status', (err, changes) ->
+      done err, 0 unless changes
+
+      count = 0
+      for change in changes
+        details = STATUS_CODE_MAP[change.code]
+        count += 1 if details.desc is 'added' and details.staged is off
+
+      done err, count
+
+  # Get the number of modified files
+  # Does not matter whether or not they are staged
+  @register 'modified', (done) ->
+    @get 'status', (err, changes) ->
+      done err, 0 unless changes
+
+      count = 0
+      for change in changes
+        details = STATUS_CODE_MAP[change.code]
+        count += 1 if details.desc is 'modified'
+
+      done err, count
+
+  # Get the number of deleted files
+  # Does not matter whether or not they are staged
+  @register 'deleted', (done) ->
+    @get 'status', (err, changes) ->
+      done err, 0 unless changes
+
+      count = 0
+      for change in changes
+        details = STATUS_CODE_MAP[change.code]
+        count += 1 if details.desc is 'deleted'
+
+      done err, count
+
+  # Get the number of "added" files
+  # Added is defined as new files that are staged
+  @register 'added', (done) ->
+    @get 'status', (err, changes) ->
+      done err, 0 unless changes
+
+      count = 0
+      for change in changes
+        details = STATUS_CODE_MAP[change.code]
+        count += 1 if details.desc is 'added' and details.staged is on
+
+      done err, count
