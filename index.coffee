@@ -61,6 +61,12 @@ module.exports = (Impromptu) ->
 
     statuses = []
     for path, code of status
+      # Hack around weird behavior in libgit2 that treats nested Git repos as submodules
+      # https://github.com/libgit2/libgit2/pull/1423
+      #
+      # Benchmarking suggests this is likely fast enough
+      continue if repo.isIgnored path
+
       statuses.push
         path: path
         code: code
