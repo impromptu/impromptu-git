@@ -69,8 +69,7 @@ module.exports = (Impromptu) ->
   #
   # This command *must* be passed through a formatter before its displayed
   @register 'status', (done) ->
-    status = repo?.getStatus()
-    done null, [] unless status
+    return done null, [] unless status = repo?.getStatus()
 
     statuses = []
     for path, code of status
