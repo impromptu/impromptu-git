@@ -1,7 +1,7 @@
 {
   "name": "impromptu-git",
   "description": "A git module for Impromptu.",
-  "version": "0.1.0-dev",
+  "version": "0.1.0",
   "homepage": "http://impromptu.sh/",
   "author": "Impromptu Team (http://impromptu.sh/)",
   "contributors": [
