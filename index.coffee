@@ -33,7 +33,7 @@ module.exports = (Impromptu) ->
 
   # Expose the repo object from the git-utils library
   # This will be null when we're not in a repo
-  @register 'repo', (done) ->
+  @register '_repo', (done) ->
     done null, repo
 
   # Helper to figure out if we're in a repo at all
