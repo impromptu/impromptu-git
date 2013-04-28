@@ -1,0 +1,3 @@
+[submodule "scripts/summon"]
+	path = scripts/summon
+	url = git://github.com/Impromptu/summon.git

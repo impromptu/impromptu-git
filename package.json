@@ -24,7 +24,7 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha test/*.coffee --compilers coffee:coffee-script",
-    "preinstall": "command -v brew >/dev/null 2>&1 && brew install cmake 2>/dev/null || { :; }",
+    "preinstall": "./scripts/summon/summon cmake",
     "prepublish": "cake build"
   },
   "dependencies": {
