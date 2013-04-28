@@ -68,12 +68,12 @@ module.exports = (Impromptu) ->
   # Get the number of commits you're ahead of the remote
   @register 'ahead', (done) ->
     @get '_aheadBehind', (err, aheadBehind) ->
-      done err, aheadBehind.ahead
+      done err, aheadBehind?.ahead
 
   # Get the number of commits you're behind the remote
   @register 'behind', (done) ->
     @get '_aheadBehind', (err, aheadBehind) ->
-      done err, aheadBehind.behind
+      done err, aheadBehind?.behind
 
   # Returns an array of objects with 'path', 'code', 'staged', 'desc'
   #
