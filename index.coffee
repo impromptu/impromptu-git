@@ -29,8 +29,6 @@ _filter_statuses_by_desc = (statuses, desc) ->
 
 
 module.exports = (Impromptu) ->
-  @name 'git'
-
   # Expose the repo object from the git-utils library
   # This will be null when we're not in a repo
   @register '_repo', (done) ->
