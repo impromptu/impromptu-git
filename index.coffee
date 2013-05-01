@@ -28,20 +28,20 @@ _filter_statuses_by_desc = (statuses, desc) ->
     STATUS_CODE_MAP[status.code]?.desc is desc
 
 
-module.exports = (Impromptu, git) ->
+module.exports = (Impromptu, register, git) ->
   # Expose the repo object from the git-utils library
   # This will be null when we're not in a repo
-  @register '_repo',
+  register '_repo',
     update: (done) ->
       done null, repo
 
   # Helper to figure out if we're in a repo at all
-  @register 'isRepo',
+  register 'isRepo',
     update: (done) ->
       done null, !! repo
 
   # Root path to the repository
-  @register 'root',
+  register 'root',
     update: (done) ->
       root = repo?.getPath().replace /\.git\/$/, ''
       done null, root
@@ -49,14 +49,14 @@ module.exports = (Impromptu, git) ->
   # Branch name
   # Returns commit hash when head is detached
   # Returns null in newly-initialized repos (note that isRepo() still returns true in this case)
-  @register 'branch',
+  register 'branch',
     update: (done) ->
       branch = repo?.getShortHead()
       done null, branch
 
   # Determine whether the repo is currently in a detached head state
   # This happens when you checkout, for example, a commit hash
-  @register 'isDetachedHead',
+  register 'isDetachedHead',
     update: (done) ->
       branch = repo?.getHead()
       done null, ! /^refs\/heads\//.test branch
@@ -65,18 +65,18 @@ module.exports = (Impromptu, git) ->
   # Each has a count of commits that your repo is ahead/behind its upstream
   #
   # This command *must* be passed through a formatter before its displayed
-  @register '_aheadBehind',
+  register '_aheadBehind',
     update: (done) ->
       done null, repo?.getAheadBehindCount()
 
   # Get the number of commits you're ahead of the remote
-  @register 'ahead',
+  register 'ahead',
     update: (done) ->
       git._aheadBehind (err, aheadBehind) ->
         done err, aheadBehind?.ahead
 
   # Get the number of commits you're behind the remote
-  @register 'behind',
+  register 'behind',
     update: (done) ->
       git._aheadBehind (err, aheadBehind) ->
         done err, aheadBehind?.behind
@@ -84,7 +84,7 @@ module.exports = (Impromptu, git) ->
   # Returns an array of objects with 'path', 'code', 'staged', 'desc'
   #
   # This command *must* be passed through a formatter before its displayed
-  @register '_status',
+  register '_status',
     update: (done) ->
       return done null, [] unless status = repo?.getStatus()
 
@@ -104,7 +104,7 @@ module.exports = (Impromptu, git) ->
 
   # Get the number of "untracked" files
   # Untracked is defined as new files that are not staged
-  @register 'untracked',
+  register 'untracked',
     update: (done) ->
       git._status (err, statuses) ->
         statuses = _filter_statuses_by_desc(statuses, 'added')
@@ -113,7 +113,7 @@ module.exports = (Impromptu, git) ->
 
   # Get the number of modified files
   # Does not matter whether or not they are staged
-  @register 'modified',
+  register 'modified',
     update: (done) ->
       git._status (err, statuses) ->
         count = _filter_statuses_by_desc(statuses, 'modified').length
@@ -121,7 +121,7 @@ module.exports = (Impromptu, git) ->
 
   # Get the number of deleted files
   # Does not matter whether or not they are staged
-  @register 'deleted',
+  register 'deleted',
     update: (done) ->
       git._status (err, statuses) ->
         count = _filter_statuses_by_desc(statuses, 'deleted').length
@@ -129,7 +129,7 @@ module.exports = (Impromptu, git) ->
 
   # Get the number of "added" files
   # Added is defined as new files that are staged
-  @register 'added',
+  register 'added',
     update: (done) ->
       git._status (err, statuses) ->
         statuses = _filter_statuses_by_desc statuses, 'added'
