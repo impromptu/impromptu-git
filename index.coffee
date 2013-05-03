@@ -3,31 +3,6 @@ _ = require 'underscore'
 
 repo = git.open '.'
 
-STATUS_CODE_MAP =
-  1:
-    desc: 'added'
-    staged: true
-  2:
-    desc: 'modified'
-    staged: true
-  4:
-    desc: 'deleted'
-    staged: true
-  128:
-    desc: 'added'
-    staged: false
-  256:
-    desc: 'modified'
-    staged: false
-  512:
-    desc: 'deleted'
-    staged: false
-
-_filter_statuses_by_desc = (statuses, desc) ->
-  _.filter statuses, (status) ->
-    STATUS_CODE_MAP[status.code]?.desc is desc
-
-
 module.exports = (Impromptu, register, git) ->
   # Expose the repo object from the git-utils library
   # This will be null when we're not in a repo
@@ -81,7 +56,59 @@ module.exports = (Impromptu, register, git) ->
       git._aheadBehind (err, aheadBehind) ->
         done err, aheadBehind?.behind
 
-  # Returns an array of objects with 'path', 'code', 'staged', 'desc'
+  class Statuses
+    constructor: (@statuses) ->
+      @modified = @_filterByState 'modified'
+      @added = @_filterByState 'added'
+      @deleted = @_filterByState 'deleted'
+
+    toString: ->
+      results = []
+      results.push @modified if @modified.length
+      results.push @added if @added.length
+      results.push @deleted if @deleted.length
+      results.join ' '
+
+    _filterByState: (@state) ->
+      filtered = _.filter @statuses, (status) ->
+        Statuses.CODE_MAP[status.code]?.state is state
+
+      if Statuses.formatters[state]
+        filtered.toString = Statuses.formatters[state]
+
+      filtered
+
+    @CODE_MAP:
+      1:
+        state: 'added'
+        staged: true
+      2:
+        state: 'modified'
+        staged: true
+      4:
+        state: 'deleted'
+        staged: true
+      128:
+        state: 'added'
+        staged: false
+      256:
+        state: 'modified'
+        staged: false
+      512:
+        state: 'deleted'
+        staged: false
+
+    @formatters:
+      added: ->
+        if @length then "+#{@length}" else ""
+
+      modified: ->
+        if @length then "∆#{@length}" else ""
+
+      deleted: ->
+        if @length then "-#{@length}" else ""
+
+  # Returns an array of objects with 'path', 'code', 'staged', 'state'
   #
   # This command *must* be passed through a formatter before its displayed
   register '_status',
@@ -97,17 +124,27 @@ module.exports = (Impromptu, register, git) ->
 
         path: path
         code: code
-        staged: STATUS_CODE_MAP[code]?.staged
-        desc: STATUS_CODE_MAP[code]?.desc
+        staged: Statuses.CODE_MAP[code]?.staged
+        state: Statuses.CODE_MAP[code]?.state
 
       done null, statuses
+
+  register 'staged',
+    update: (done) ->
+      git._status (err, statuses) ->
+        done err, new Statuses _.where(statuses, {staged: true})
+
+  register 'unstaged',
+    update: (done) ->
+      git._status (err, statuses) ->
+        done err, new Statuses _.where(statuses, {staged: false})
 
   # Get the number of "untracked" files
   # Untracked is defined as new files that are not staged
   register 'untracked',
     update: (done) ->
       git._status (err, statuses) ->
-        statuses = _filter_statuses_by_desc(statuses, 'added')
+        statuses = _filter_statuses_by_state(statuses, 'added')
         count = _.where(statuses, {staged: false}).length
         done err, count
 
@@ -116,7 +153,7 @@ module.exports = (Impromptu, register, git) ->
   register 'modified',
     update: (done) ->
       git._status (err, statuses) ->
-        count = _filter_statuses_by_desc(statuses, 'modified').length
+        count = _filter_statuses_by_state(statuses, 'modified').length
         done err, count
 
   # Get the number of deleted files
@@ -124,7 +161,7 @@ module.exports = (Impromptu, register, git) ->
   register 'deleted',
     update: (done) ->
       git._status (err, statuses) ->
-        count = _filter_statuses_by_desc(statuses, 'deleted').length
+        count = _filter_statuses_by_state(statuses, 'deleted').length
         done err, count
 
   # Get the number of "added" files
@@ -132,6 +169,6 @@ module.exports = (Impromptu, register, git) ->
   register 'added',
     update: (done) ->
       git._status (err, statuses) ->
-        statuses = _filter_statuses_by_desc statuses, 'added'
+        statuses = _filter_statuses_by_state statuses, 'added'
         count = _.where(statuses, {staged: true}).length
         done err, count
