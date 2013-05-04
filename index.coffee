@@ -58,9 +58,42 @@ module.exports = (Impromptu, register, git) ->
 
   class Statuses
     constructor: (@statuses) ->
-      @modified = @_filterByState 'modified'
-      @added = @_filterByState 'added'
-      @deleted = @_filterByState 'deleted'
+      # Create status arrays.
+      @added = []
+      @modified = []
+      @deleted = []
+      @staged = []
+      @unstaged = []
+
+      # Bind array formatters.
+      for key, formatter of Statuses.formatters
+        @[key].toString = formatter if @[key]
+
+      # Populate status arrays.
+      for status in @statuses
+        # Each status has a code that maps to how the file has changed and
+        # whether they are staged.
+        #
+        # For example, when `code` is 1, the file is added and staged.
+        switch status.code
+          when 1
+            @added.push status
+            @staged.push status
+          when 2
+            @modified.push status
+            @staged.push status
+          when 4
+            @deleted.push status
+            @staged.push status
+          when 128
+            @added.push status
+            @unstaged.push status
+          when 256
+            @modified.push status
+            @unstaged.push status
+          when 512
+            @deleted.push status
+            @unstaged.push status
 
     toString: ->
       results = []
@@ -68,35 +101,6 @@ module.exports = (Impromptu, register, git) ->
       results.push @added if @added.length
       results.push @deleted if @deleted.length
       results.join ' '
-
-    _filterByState: (@state) ->
-      filtered = _.filter @statuses, (status) ->
-        Statuses.CODE_MAP[status.code]?.state is state
-
-      if Statuses.formatters[state]
-        filtered.toString = Statuses.formatters[state]
-
-      filtered
-
-    @CODE_MAP:
-      1:
-        state: 'added'
-        staged: true
-      2:
-        state: 'modified'
-        staged: true
-      4:
-        state: 'deleted'
-        staged: true
-      128:
-        state: 'added'
-        staged: false
-      256:
-        state: 'modified'
-        staged: false
-      512:
-        state: 'deleted'
-        staged: false
 
     @formatters:
       added: ->
@@ -124,51 +128,49 @@ module.exports = (Impromptu, register, git) ->
 
         path: path
         code: code
-        staged: Statuses.CODE_MAP[code]?.staged
-        state: Statuses.CODE_MAP[code]?.state
 
-      done null, statuses
+      done null, new Statuses statuses
 
+  # Get an object that represents the status of staged files.
+  register '_staged',
+    update: (done) ->
+      git._status (err, statuses) ->
+        done err, new Statuses statuses.staged
+
+  # Get a string that represents the status of staged files.
+  # Format: "∆2 +1 -3"
   register 'staged',
     update: (done) ->
-      git._status (err, statuses) ->
-        done err, new Statuses _.where(statuses, {staged: true})
+      git._staged (err, statuses) ->
+        done err, statuses.toString()
 
+  # Get an object that represents the status of unstaged files.
+  register '_unstaged',
+    update: (done) ->
+      git._status (err, statuses) ->
+        done err, new Statuses statuses.unstaged
+
+  # Get a string that represents the status of unstaged files.
+  # Format: "∆2 +1 -3"
   register 'unstaged',
     update: (done) ->
-      git._status (err, statuses) ->
-        done err, new Statuses _.where(statuses, {staged: false})
+      git._unstaged (err, statuses) ->
+        done err, statuses.toString()
 
-  # Get the number of "untracked" files
-  # Untracked is defined as new files that are not staged
-  register 'untracked',
-    update: (done) ->
-      git._status (err, statuses) ->
-        statuses = _filter_statuses_by_state(statuses, 'added')
-        count = _.where(statuses, {staged: false}).length
-        done err, count
-
-  # Get the number of modified files
-  # Does not matter whether or not they are staged
-  register 'modified',
-    update: (done) ->
-      git._status (err, statuses) ->
-        count = _filter_statuses_by_state(statuses, 'modified').length
-        done err, count
-
-  # Get the number of deleted files
-  # Does not matter whether or not they are staged
-  register 'deleted',
-    update: (done) ->
-      git._status (err, statuses) ->
-        count = _filter_statuses_by_state(statuses, 'deleted').length
-        done err, count
-
-  # Get the number of "added" files
-  # Added is defined as new files that are staged
+  # Get the number of added files.
   register 'added',
     update: (done) ->
       git._status (err, statuses) ->
-        statuses = _filter_statuses_by_state statuses, 'added'
-        count = _.where(statuses, {staged: true}).length
-        done err, count
+        done err, statuses.added.toString()
+
+  # Get the number of modified files.
+  register 'modified',
+    update: (done) ->
+      git._status (err, statuses) ->
+        done err, statuses.modified.toString()
+
+  # Get the number of deleted files.
+  register 'deleted',
+    update: (done) ->
+      git._status (err, statuses) ->
+        done err, statuses.deleted.toString()
