@@ -131,46 +131,22 @@ module.exports = (Impromptu, register, git) ->
 
       done null, new Statuses statuses
 
-  # Get an object that represents the status of staged files.
-  register '_staged',
-    update: (done) ->
-      git._status (err, statuses) ->
-        done err, new Statuses statuses.staged
+  # Register object and string methods for filtering the statuses.
+  #
+  # Object methods: `_staged`, `_unstaged`, `_added`, `_modified`, `_deleted`
+  # String methods: `staged`, `unstaged`, `added`, `modified`, `deleted`
+  #
+  # Strings are formatted as "∆2 +1 -3" by default.
+  ['staged', 'unstaged', 'added', 'modified', 'deleted'].forEach (type) ->
+    # Get an object that has filtered the statuses by type.
+    register "_#{type}",
+      update: (done) ->
+        git._status (err, statuses) ->
+          done err, new Statuses statuses[type]
 
-  # Get a string that represents the status of staged files.
-  # Format: "∆2 +1 -3"
-  register 'staged',
-    update: (done) ->
-      git._staged (err, statuses) ->
-        done err, statuses.toString()
-
-  # Get an object that represents the status of unstaged files.
-  register '_unstaged',
-    update: (done) ->
-      git._status (err, statuses) ->
-        done err, new Statuses statuses.unstaged
-
-  # Get a string that represents the status of unstaged files.
-  # Format: "∆2 +1 -3"
-  register 'unstaged',
-    update: (done) ->
-      git._unstaged (err, statuses) ->
-        done err, statuses.toString()
-
-  # Get the number of added files.
-  register 'added',
-    update: (done) ->
-      git._status (err, statuses) ->
-        done err, statuses.added.toString()
-
-  # Get the number of modified files.
-  register 'modified',
-    update: (done) ->
-      git._status (err, statuses) ->
-        done err, statuses.modified.toString()
-
-  # Get the number of deleted files.
-  register 'deleted',
-    update: (done) ->
-      git._status (err, statuses) ->
-        done err, statuses.deleted.toString()
+    # Get a string that represents the status.
+    # Format: "∆2 +1 -3"
+    register type,
+      update: (done) ->
+        git["_#{type}"] (err, statuses) ->
+          done err, statuses.toString()
