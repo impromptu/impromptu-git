@@ -3,31 +3,6 @@ _ = require 'underscore'
 
 repo = git.open '.'
 
-STATUS_CODE_MAP =
-  1:
-    desc: 'added'
-    staged: true
-  2:
-    desc: 'modified'
-    staged: true
-  4:
-    desc: 'deleted'
-    staged: true
-  128:
-    desc: 'added'
-    staged: false
-  256:
-    desc: 'modified'
-    staged: false
-  512:
-    desc: 'deleted'
-    staged: false
-
-_filter_statuses_by_desc = (statuses, desc) ->
-  _.filter statuses, (status) ->
-    STATUS_CODE_MAP[status.code]?.desc is desc
-
-
 module.exports = (Impromptu, register, git) ->
   # Expose the repo object from the git-utils library
   # This will be null when we're not in a repo
@@ -81,7 +56,63 @@ module.exports = (Impromptu, register, git) ->
       git._aheadBehind (err, aheadBehind) ->
         done err, aheadBehind?.behind
 
-  # Returns an array of objects with 'path', 'code', 'staged', 'desc'
+  class Statuses
+    constructor: (@statuses) ->
+      # Create status arrays.
+      @added = []
+      @modified = []
+      @deleted = []
+      @staged = []
+      @unstaged = []
+
+      # Bind array formatters.
+      for key, formatter of Statuses.formatters
+        @[key].toString = formatter if @[key]
+
+      # Populate status arrays.
+      for status in @statuses
+        # Each status has a code that maps to how the file has changed and
+        # whether they are staged.
+        #
+        # For example, when `code` is 1, the file is added and staged.
+        switch status.code
+          when 1
+            @added.push status
+            @staged.push status
+          when 2
+            @modified.push status
+            @staged.push status
+          when 4
+            @deleted.push status
+            @staged.push status
+          when 128
+            @added.push status
+            @unstaged.push status
+          when 256
+            @modified.push status
+            @unstaged.push status
+          when 512
+            @deleted.push status
+            @unstaged.push status
+
+    toString: ->
+      results = []
+      results.push @modified if @modified.length
+      results.push @added if @added.length
+      results.push @deleted if @deleted.length
+      results.join ' '
+
+    @formatters:
+      added: ->
+        if @length then "+#{@length}" else ""
+
+      modified: ->
+        if @length then "∆#{@length}" else ""
+
+      deleted: ->
+        if @length then "-#{@length}" else ""
+
+  # Returns an array of objects with 'path', 'code', 'staged', 'state'
   #
   # This command *must* be passed through a formatter before its displayed
   register '_status',
@@ -97,41 +128,25 @@ module.exports = (Impromptu, register, git) ->
 
         path: path
         code: code
-        staged: STATUS_CODE_MAP[code]?.staged
-        desc: STATUS_CODE_MAP[code]?.desc
 
-      done null, statuses
+      done null, new Statuses statuses
 
-  # Get the number of "untracked" files
-  # Untracked is defined as new files that are not staged
-  register 'untracked',
-    update: (done) ->
-      git._status (err, statuses) ->
-        statuses = _filter_statuses_by_desc(statuses, 'added')
-        count = _.where(statuses, {staged: false}).length
-        done err, count
+  # Register object and string methods for filtering the statuses.
+  #
+  # Object methods: `_staged`, `_unstaged`, `_added`, `_modified`, `_deleted`
+  # String methods: `staged`, `unstaged`, `added`, `modified`, `deleted`
+  #
+  # Strings are formatted as "∆2 +1 -3" by default.
+  ['staged', 'unstaged', 'added', 'modified', 'deleted'].forEach (type) ->
+    # Get an object that has filtered the statuses by type.
+    register "_#{type}",
+      update: (done) ->
+        git._status (err, statuses) ->
+          done err, new Statuses statuses[type]
 
-  # Get the number of modified files
-  # Does not matter whether or not they are staged
-  register 'modified',
-    update: (done) ->
-      git._status (err, statuses) ->
-        count = _filter_statuses_by_desc(statuses, 'modified').length
-        done err, count
-
-  # Get the number of deleted files
-  # Does not matter whether or not they are staged
-  register 'deleted',
-    update: (done) ->
-      git._status (err, statuses) ->
-        count = _filter_statuses_by_desc(statuses, 'deleted').length
-        done err, count
-
-  # Get the number of "added" files
-  # Added is defined as new files that are staged
-  register 'added',
-    update: (done) ->
-      git._status (err, statuses) ->
-        statuses = _filter_statuses_by_desc statuses, 'added'
-        count = _.where(statuses, {staged: true}).length
-        done err, count
+    # Get a string that represents the status.
+    # Format: "∆2 +1 -3"
+    register type,
+      update: (done) ->
+        git["_#{type}"] (err, statuses) ->
+          done err, statuses.toString()
