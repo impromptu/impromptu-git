@@ -161,3 +161,8 @@ module.exports = (Impromptu, register, git) ->
       update: (done) ->
         git["_#{type}"] (err, statuses) ->
           done err, statuses.toString()
+
+  # Register the git repository.
+  @repository.register 'git',
+    root: git.root
+    branch: git.branch
