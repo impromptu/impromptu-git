@@ -28,8 +28,7 @@
     "prepublish": "cake build"
   },
   "dependencies": {
-    "git-utils": "~0.15.0",
-    "underscore": "~1.4.4"
+    "git-utils": "~0.15.0"
   },
   "devDependencies": {
     "coffee-script": "~1.6.2",
