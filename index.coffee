@@ -168,3 +168,18 @@ module.exports = (Impromptu, register, git) ->
       update: (done) ->
         git["_#{type}"] (err, statuses) ->
           done err, statuses.toString()
+
+  register 'fetch',
+    cache: 'repository'
+    expire: 60
+    update: (done) ->
+      git.isRepo (err, isRepo) ->
+        return done err, isRepo unless isRepo
+
+        Impromptu.exec 'git fetch --all', (err, results) ->
+          done err, results
+
+  # Register the git repository.
+  @repository.register 'git',
+    root: git.root
+    branch: git.branch
