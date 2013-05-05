@@ -1,5 +1,4 @@
 git = require 'git-utils'
-_ = require 'underscore'
 
 repo = git.open '.'
 
