@@ -56,44 +56,56 @@ module.exports = (Impromptu, register, git) ->
       git._aheadBehind (err, aheadBehind) ->
         done err, aheadBehind?.behind
 
+  class Status
+    # These are the bit codes that correspond to each status entry.
+    # There are additional codes to handle submodules that are not documented here.
+    @Codes:
+      INVALID:              0
+
+      STAGED_ADDED:         1 << 0
+      STAGED_MODIFIED:      1 << 1
+      STAGED_DELETED:       1 << 2
+      STAGED_RENAMED:       1 << 3
+      STAGED_TYPE_CHANGE:   1 << 4
+
+      UNSTAGED_ADDED:       1 << 7
+      UNSTAGED_MODIFIED:    1 << 8
+      UNSTAGED_DELETED:     1 << 9
+      UNSTAGED_TYPE_CHANGE: 1 << 10
+
+      IGNORED:              1 << 14
+      UNCHANGED:            1 << 15
+
+    constructor: (@path, @code) ->
+      @flags = {}
+      for key, code of Status.Codes
+        @flags[key] = !! (@code & code)
+
+        # If we find a valid flag, assign our internal properties based on the
+        # flag's name. Any flag can switch a property to true.
+        if @flags[key]
+          @staged ||= /^STAGED/.test key
+          @unstaged ||= /^UNSTAGED/.test key
+          @added ||= /ADDED$/.test key
+          @modified ||= /MODIFIED$/.test key
+          @deleted ||= /DELETED$/.test key
+
   class Statuses
     constructor: (@statuses) ->
+      properties = ['added', 'modified', 'deleted', 'staged', 'unstaged']
+
       # Create status arrays.
-      @added = []
-      @modified = []
-      @deleted = []
-      @staged = []
-      @unstaged = []
+      for property in properties
+        @[property] = []
 
       # Bind array formatters.
-      for key, formatter of Statuses.formatters
-        @[key].toString = formatter if @[key]
+      for property, formatter of Statuses.formatters
+        @[property].toString = formatter if @[property]
 
       # Populate status arrays.
       for status in @statuses
-        # Each status has a code that maps to how the file has changed and
-        # whether they are staged.
-        #
-        # For example, when `code` is 1, the file is added and staged.
-        switch status.code
-          when 1
-            @added.push status
-            @staged.push status
-          when 2
-            @modified.push status
-            @staged.push status
-          when 4
-            @deleted.push status
-            @staged.push status
-          when 128
-            @added.push status
-            @unstaged.push status
-          when 256
-            @modified.push status
-            @unstaged.push status
-          when 512
-            @deleted.push status
-            @unstaged.push status
+        for property in properties
+          @[property].push status if status[property]
 
     toString: ->
       results = []
@@ -126,8 +138,7 @@ module.exports = (Impromptu, register, git) ->
         # Benchmarking suggests this is likely fast enough
         continue if repo.isIgnored path
 
-        path: path
-        code: code
+        new Status path, code
 
       done null, new Statuses statuses
 
