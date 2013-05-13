@@ -46,6 +46,15 @@ module.exports = (Impromptu, register, git) ->
         Impromptu.exec 'git rev-parse --short HEAD', (_err, _result) ->
           done _err, _result
 
+  # Short commit hash
+  register 'commit',
+    update: (done) ->
+      Impromptu.exec 'git rev-parse --short HEAD 2>/dev/null', (err, result) ->
+        if err
+          done err, null
+        else
+          done err, result
+
   # Determine whether the repo is currently in a detached head state
   # This happens when you checkout, for example, a commit hash
   register 'isDetachedHead',
