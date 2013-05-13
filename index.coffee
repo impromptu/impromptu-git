@@ -178,3 +178,4 @@ module.exports = (Impromptu, register, git) ->
   @repository.register 'git',
     root: git.root
     branch: git.branch
+    commit: git.commit
