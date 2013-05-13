@@ -162,3 +162,8 @@ module.exports = (Impromptu, register, git) ->
 
         Impromptu.exec 'git fetch --all', (err, results) ->
           done err, results
+
+  # Register the git repository.
+  @repository.register 'git',
+    root: git.root
+    branch: git.branch
