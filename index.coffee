@@ -53,7 +53,7 @@ module.exports = (Impromptu, register, git) ->
         if err
           done err, null
         else
-          done err, result
+          done err, result.trim()
 
   # Determine whether the repo is currently in a detached head state
   # This happens when you checkout, for example, a commit hash
