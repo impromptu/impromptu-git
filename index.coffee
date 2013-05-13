@@ -73,7 +73,9 @@ module.exports = (Impromptu, register, git) ->
         command = "git rev-list --left-right --count #{remoteBranch.trim()}...HEAD"
         Impromptu.exec command, (err, result) ->
           return done err, null if err
-          data = result.trim().split /\s+/
+          data = result.trim().split(/\s+/).map (value) ->
+            parseInt value, 10
+
           done err, {behind: data[0], ahead: data[1]}
 
   # Get the number of commits you're ahead of the remote
