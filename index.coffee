@@ -1,5 +1,3 @@
-git = require 'git-utils'
-
 # git.open() returns null when we're not in a repo
 #
 # We're using false to represent "not yet created" and null to
