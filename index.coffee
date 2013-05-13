@@ -1,20 +1,4 @@
-# git.open() returns null when we're not in a repo
-#
-# We're using false to represent "not yet created" and null to
-# represent "created and not in a repo"
-repoObj = false
-
-repo = ->
-  repoObj = git.open '.' if repoObj is false
-  repoObj
-
 module.exports = (Impromptu, register, git) ->
-  # Expose the repo object from the git-utils library
-  # This will be null when we're not in a repo
-  register '_repo',
-    update: (done) ->
-      done null, repo()
-
   # Helper to figure out if we're in a repo at all
   register 'isRepo',
     update: (done) ->
