@@ -1,47 +1,66 @@
-git = require 'git-utils'
+getStatuses = (porcelainStatus) ->
+  PORCELAIN =
+    staged   : /^[^\?\s]/  # Leading non-whitespace that is not a question mark
+    unstaged : /\S$/       # Trailing non-whitespace
+    added    : /A|\?\?/    # Any "A" or "??"
+    modified : /M/         # Any "M"
+    deleted  : /D/         # Any "D"
 
-# git.open() returns null when we're not in a repo
-#
-# We're using false to represent "not yet created" and null to
-# represent "created and not in a repo"
-repoObj = false
+  porcelainStatus.replace(/\s+$/, '').split('\0').map (line) ->
+    status = line.substring 0, 2
 
-repo = ->
-  repoObj = git.open '.' if repoObj is false
-  repoObj
+    path: line.slice 3
+    properties: (prop for prop, regex of PORCELAIN when regex.test status)
+
 
 module.exports = (Impromptu, register, git) ->
-  # Expose the repo object from the git-utils library
-  # This will be null when we're not in a repo
-  register '_repo',
-    update: (done) ->
-      done null, repo()
-
   # Helper to figure out if we're in a repo at all
   register 'isRepo',
     update: (done) ->
-      done null, !! repo()
+      command = '([ -d .git ] || git rev-parse --git-dir >/dev/null 2>&1)'
+      Impromptu.exec command, (err) ->
+        done err, ! err
 
   # Root path to the repository
   register 'root',
     update: (done) ->
-      root = repo()?.getPath().replace /\.git\/$/, ''
-      done null, root
+      command = 'git rev-parse --show-toplevel 2>/dev/null'
+      Impromptu.exec command, (err, result) ->
+        if err
+          done err, null
+        else
+          done err, result.trim()
 
   # Branch name
   # Returns commit hash when head is detached
   # Returns null in newly-initialized repos (note that isRepo() still returns true in this case)
   register 'branch',
     update: (done) ->
-      branch = repo()?.getShortHead()
-      done null, branch
+      command = 'git rev-parse --abbrev-ref HEAD 2>/dev/null'
+      Impromptu.exec command, (err, result) ->
+        return done err, null if err
+
+        result = result.trim()
+        return done err, result unless result is 'HEAD'
+
+        Impromptu.exec 'git rev-parse --short HEAD', (_err, _result) ->
+          done _err, _result
 
   # Determine whether the repo is currently in a detached head state
   # This happens when you checkout, for example, a commit hash
   register 'isDetachedHead',
     update: (done) ->
-      branch = repo()?.getHead()
-      done null, ! /^refs\/heads\//.test branch
+      Impromptu.exec 'git symbolic-ref HEAD 2>/dev/null', (err) ->
+        done err, !! err
+
+  register 'remoteBranch',
+    update: (done) ->
+      tracking_branch_command = "git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)"
+      Impromptu.exec tracking_branch_command, (err, result) ->
+        if result
+          done err, result.trim()
+        else
+          done err, null
 
   # Returns an object with 'ahead' and 'behind' keys
   # Each has a count of commits that your repo is ahead/behind its upstream
@@ -49,7 +68,13 @@ module.exports = (Impromptu, register, git) ->
   # This command *must* be passed through a formatter before its displayed
   register '_aheadBehind',
     update: (done) ->
-      done null, repo()?.getAheadBehindCount()
+      git.remoteBranch (err, remoteBranch) ->
+        done null, null unless remoteBranch
+        command = "git rev-list --left-right --count #{remoteBranch.trim()}...HEAD"
+        Impromptu.exec command, (err, result) ->
+          return done err, null if err
+          data = result.trim().split /\s+/
+          done err, {behind: data[0], ahead: data[1]}
 
   # Get the number of commits you're ahead of the remote
   register 'ahead',
@@ -63,39 +88,6 @@ module.exports = (Impromptu, register, git) ->
       git._aheadBehind (err, aheadBehind) ->
         done err, aheadBehind?.behind
 
-  class Status
-    # These are the bit codes that correspond to each status entry.
-    # There are additional codes to handle submodules that are not documented here.
-    @Codes:
-      INVALID:              0
-
-      STAGED_ADDED:         1 << 0
-      STAGED_MODIFIED:      1 << 1
-      STAGED_DELETED:       1 << 2
-      STAGED_RENAMED:       1 << 3
-      STAGED_TYPE_CHANGE:   1 << 4
-
-      UNSTAGED_ADDED:       1 << 7
-      UNSTAGED_MODIFIED:    1 << 8
-      UNSTAGED_DELETED:     1 << 9
-      UNSTAGED_TYPE_CHANGE: 1 << 10
-
-      IGNORED:              1 << 14
-      UNCHANGED:            1 << 15
-
-    constructor: (@path, @code) ->
-      @flags = {}
-      for key, code of Status.Codes
-        @flags[key] = !! (@code & code)
-
-        # If we find a valid flag, assign our internal properties based on the
-        # flag's name. Any flag can switch a property to true.
-        if @flags[key]
-          @staged ||= /^STAGED/.test key
-          @unstaged ||= /^UNSTAGED/.test key
-          @added ||= /ADDED$/.test key
-          @modified ||= /MODIFIED$/.test key
-          @deleted ||= /DELETED$/.test key
 
   class Statuses
     constructor: (@statuses) ->
@@ -112,7 +104,7 @@ module.exports = (Impromptu, register, git) ->
       # Populate status arrays.
       for status in @statuses
         for property in properties
-          @[property].push status if status[property]
+          @[property].push status if status.properties.indexOf(property) > -1
 
     toString: ->
       results = []
@@ -136,18 +128,10 @@ module.exports = (Impromptu, register, git) ->
   # This command *must* be passed through a formatter before its displayed
   register '_status',
     update: (done) ->
-      return done null, [] unless status = repo()?.getStatus()
-
-      statuses = for path, code of status
-        # Hack around weird behavior in libgit2 that treats nested Git repos as submodules
-        # https://github.com/libgit2/libgit2/pull/1423
-        #
-        # Benchmarking suggests this is likely fast enough
-        continue if repo().isIgnored path
-
-        new Status path, code
-
-      done null, new Statuses statuses
+      Impromptu.exec 'git status --porcelain -z 2>/dev/null', (err, result) ->
+        return done err, null if err
+        statuses = getStatuses result
+        done null, new Statuses statuses
 
   # Register object and string methods for filtering the statuses.
   #
