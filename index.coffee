@@ -78,7 +78,7 @@ module.exports = (Impromptu, register, git) ->
   register '_aheadBehind',
     update: (done) ->
       git.remoteBranch (err, remoteBranch) ->
-        return done null, null unless remoteBranch
+        return done err, null unless remoteBranch
 
         command = "git rev-list --left-right --count #{remoteBranch.trim()}...HEAD"
         Impromptu.exec command, (err, result) ->
