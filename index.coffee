@@ -175,6 +175,12 @@ module.exports = (Impromptu, register, git) ->
         Impromptu.exec 'git fetch --all', (err, results) ->
           done err, results
 
+  register 'stashCount',
+    update: (done) ->
+      command = 'git stash list | wc -l'
+      Impromptu.exec command, (err, count) ->
+        done err, parseInt count.trim(), 10
+
   # Register the git repository.
   @repository.register 'git',
     root: git.root
