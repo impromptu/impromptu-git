@@ -23,6 +23,7 @@
   ],
   "main": "index.js",
   "scripts": {
+    "prepublish": "cake build",
     "test": "mocha test/*.coffee --compilers coffee:coffee-script"
   },
   "dependencies": {},
