@@ -17,7 +17,7 @@ module.exports = (Impromptu, register, git) ->
   # Helper to figure out if we're in a repo at all
   register 'isRepo',
     update: (done) ->
-      command = '([ -d .git ] || git rev-parse --git-dir >/dev/null 2>&1)'
+      command = '([ -d .git ] || [[ "true" == `git rev-parse --is-inside-work-tree 2>&1` ]])'
       Impromptu.exec command, (err) ->
         done err, ! err
 
