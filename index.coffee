@@ -181,6 +181,10 @@ module.exports = (Impromptu, register, git) ->
       Impromptu.exec command, (err, count) ->
         done err, parseInt count.trim(), 10
 
+  register 'remoteUrl',
+    update: (done) ->
+      Impromptu.exec 'git config --get remote.origin.url', done
+
   # Register the git repository.
   @repository.register 'git',
     root: git.root
