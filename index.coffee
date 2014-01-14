@@ -1,3 +1,5 @@
+path = require 'path'
+
 getStatuses = (porcelainStatus) ->
   PORCELAIN =
     staged   : /^[^\?\s]/  # Leading non-whitespace that is not a question mark
@@ -177,9 +179,10 @@ module.exports = (Impromptu, register, git) ->
 
   register 'stashCount',
     update: (done) ->
-      command = 'git stash list | wc -l'
-      Impromptu.exec command, (err, count) ->
-        done err, parseInt count.trim(), 10
+      git.root (err, root) ->
+        return done err if err
+        Impromptu.exec "wc -l #{path.join root, '.git/logs/refs/stash'}", (err, count) ->
+          done err, parseInt count.trim(), 10
 
   register 'remoteUrl',
     update: (done) ->
