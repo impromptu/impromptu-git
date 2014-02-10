@@ -1,3 +1,4 @@
+impromptu = require 'impromptu'
 fs = require 'fs'
 path = require 'path'
 
@@ -15,20 +16,19 @@ getStatuses = (porcelainStatus) ->
     path: line.slice 3
     properties: (prop for prop, regex of PORCELAIN when regex.test status)
 
-
-module.exports = (Impromptu, register, git) ->
+module.exports = impromptu.plugin.create (git) ->
   # Helper to figure out if we're in a repo at all
-  register 'isRepo',
+  git.register 'isRepo',
     update: (done) ->
       command = '([ -d .git ] || [[ "true" == `git rev-parse --is-inside-work-tree 2>&1` ]])'
-      Impromptu.exec command, (err) ->
+      impromptu.exec command, (err) ->
         done err, ! err
 
   # Root path to the repository
-  register 'root',
+  git.register 'root',
     update: (done) ->
       command = 'git rev-parse --show-toplevel 2>/dev/null'
-      Impromptu.exec command, (err, result) ->
+      impromptu.exec command, (err, result) ->
         if err
           done err, null
         else
@@ -37,22 +37,22 @@ module.exports = (Impromptu, register, git) ->
   # Branch name
   # Returns commit hash when head is detached
   # Returns null in newly-initialized repos (note that isRepo() still returns true in this case)
-  register 'branch',
+  git.register 'branch',
     update: (done) ->
       command = 'git rev-parse --abbrev-ref HEAD 2>/dev/null'
-      Impromptu.exec command, (err, result) ->
+      impromptu.exec command, (err, result) ->
         return done err, null if err
 
         result = result.trim()
         return done err, result unless result is 'HEAD'
 
-        Impromptu.exec 'git rev-parse --short HEAD', (_err, _result) ->
+        impromptu.exec 'git rev-parse --short HEAD', (_err, _result) ->
           done _err, _result
 
   # Short commit hash
-  register 'commit',
+  git.register 'commit',
     update: (done) ->
-      Impromptu.exec 'git rev-parse --short HEAD 2>/dev/null', (err, result) ->
+      impromptu.exec 'git rev-parse --short HEAD 2>/dev/null', (err, result) ->
         if err
           done err, null
         else
@@ -60,15 +60,15 @@ module.exports = (Impromptu, register, git) ->
 
   # Determine whether the repo is currently in a detached head state
   # This happens when you checkout, for example, a commit hash
-  register 'isDetachedHead',
+  git.register 'isDetachedHead',
     update: (done) ->
-      Impromptu.exec 'git symbolic-ref HEAD 2>/dev/null', (err) ->
+      impromptu.exec 'git symbolic-ref HEAD 2>/dev/null', (err) ->
         done err, !! err
 
-  register 'remoteBranch',
+  git.register 'remoteBranch',
     update: (done) ->
       tracking_branch_command = "git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)"
-      Impromptu.exec tracking_branch_command, (err, result) ->
+      impromptu.exec tracking_branch_command, (err, result) ->
         if result
           done err, result.trim()
         else
@@ -78,27 +78,30 @@ module.exports = (Impromptu, register, git) ->
   # Each has a count of commits that your repo is ahead/behind its upstream
   #
   # This command *must* be passed through a formatter before its displayed
-  register '_aheadBehind',
+  git.register '_aheadBehind',
     update: (done) ->
-      git.remoteBranch (err, remoteBranch) ->
-        return done err, null unless remoteBranch
+      git.fetch (err) ->
+        return done err, null if err
 
-        command = "git rev-list --left-right --count #{remoteBranch.trim()}...HEAD"
-        Impromptu.exec command, (err, result) ->
-          return done err, null if err
-          data = result.trim().split(/\s+/).map (value) ->
-            parseInt value, 10
+        git.remoteBranch (err, remoteBranch) ->
+          return done err, null unless remoteBranch
 
-          done err, {behind: data[0], ahead: data[1]}
+          command = "git rev-list --left-right --count #{remoteBranch.trim()}...HEAD"
+          impromptu.exec command, (err, result) ->
+            return done err, null if err
+            data = result.trim().split(/\s+/).map (value) ->
+              parseInt value, 10
+
+            done err, {behind: data[0], ahead: data[1]}
 
   # Get the number of commits you're ahead of the remote
-  register 'ahead',
+  git.register 'ahead',
     update: (done) ->
       git._aheadBehind (err, aheadBehind) ->
         done err, aheadBehind?.ahead
 
   # Get the number of commits you're behind the remote
-  register 'behind',
+  git.register 'behind',
     update: (done) ->
       git._aheadBehind (err, aheadBehind) ->
         done err, aheadBehind?.behind
@@ -141,9 +144,9 @@ module.exports = (Impromptu, register, git) ->
   # Returns an array of objects with 'path', 'code', 'staged', 'state'
   #
   # This command *must* be passed through a formatter before its displayed
-  register '_status',
+  git.register '_status',
     update: (done) ->
-      Impromptu.exec 'git status --porcelain -z 2>/dev/null', (err, result) ->
+      impromptu.exec 'git status --porcelain -z 2>/dev/null', (err, result) ->
         return done err, null if err
         statuses = getStatuses result
         done null, new Statuses statuses
@@ -156,29 +159,29 @@ module.exports = (Impromptu, register, git) ->
   # Strings are formatted as "∆2 +1 -3" by default.
   ['staged', 'unstaged', 'added', 'modified', 'deleted'].forEach (type) ->
     # Get an object that has filtered the statuses by type.
-    register "_#{type}",
+    git.register "_#{type}",
       update: (done) ->
         git._status (err, statuses) ->
           done err, new Statuses statuses[type]
 
     # Get a string that represents the status.
     # Format: "∆2 +1 -3"
-    register type,
+    git.register type,
       update: (done) ->
         git["_#{type}"] (err, statuses) ->
           done err, statuses.toString()
 
-  register 'fetch',
+  git.register 'fetch',
     cache: 'repository'
     expire: 60
     update: (done) ->
       git.isRepo (err, isRepo) ->
         return done err, isRepo unless isRepo
 
-        Impromptu.exec 'git fetch --all', (err, results) ->
+        impromptu.exec 'git fetch --all', (err, results) ->
           done err, results
 
-  register 'stashCount',
+  git.register 'stashCount',
     update: (done) ->
       git.root (err, root) ->
         return done err if err
@@ -186,15 +189,15 @@ module.exports = (Impromptu, register, git) ->
         fs.exists path.join(root, '.git/logs/refs/stash'), (exists) ->
           return done null, 0 unless exists
 
-          Impromptu.exec "wc -l #{path.join root, '.git/logs/refs/stash'}", (err, count) ->
+          impromptu.exec "wc -l #{path.join root, '.git/logs/refs/stash'}", (err, count) ->
             done err, parseInt count.trim(), 10
 
-  register 'remoteUrl',
+  git.register 'remoteUrl',
     update: (done) ->
-      Impromptu.exec 'git config --get remote.origin.url', done
+      impromptu.exec 'git config --get remote.origin.url', done
 
   # Register the git repository.
-  @repository.register 'git',
+  impromptu.repository.register 'git',
     root: git.root
     branch: git.branch
     commit: git.commit
