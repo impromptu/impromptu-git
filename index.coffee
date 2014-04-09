@@ -9,6 +9,7 @@ getStatuses = (porcelainStatus) ->
     added    : /A|\?\?/    # Any "A" or "??"
     modified : /M/         # Any "M"
     deleted  : /D/         # Any "D"
+    renamed  : /R/         # Any "R"
 
   porcelainStatus.replace(/\s+$/, '').split('\0').map (line) ->
     status = line.substring 0, 2
@@ -109,7 +110,7 @@ module.exports = impromptu.plugin.create (git) ->
 
   class Statuses
     constructor: (@statuses) ->
-      properties = ['added', 'modified', 'deleted', 'staged', 'unstaged']
+      properties = ['added', 'modified', 'deleted', 'renamed', 'staged', 'unstaged']
 
       # Create status arrays.
       for property in properties
@@ -129,6 +130,7 @@ module.exports = impromptu.plugin.create (git) ->
       results.push @modified if @modified.length
       results.push @added if @added.length
       results.push @deleted if @deleted.length
+      results.push @renamed if @renamed.length
       results.join ' '
 
     @formatters:
@@ -140,6 +142,9 @@ module.exports = impromptu.plugin.create (git) ->
 
       deleted: ->
         if @length then "-#{@length}" else ""
+
+      renamed: ->
+        if @length then "→#{@length}" else ""
 
   # Returns an array of objects with 'path', 'code', 'staged', 'state'
   #
@@ -153,11 +158,11 @@ module.exports = impromptu.plugin.create (git) ->
 
   # Register object and string methods for filtering the statuses.
   #
-  # Object methods: `_staged`, `_unstaged`, `_added`, `_modified`, `_deleted`
-  # String methods: `staged`, `unstaged`, `added`, `modified`, `deleted`
+  # Object methods: `_staged`, `_unstaged`, `_added`, `_modified`, `_deleted`, `_renamed`
+  # String methods: `staged`, `unstaged`, `added`, `modified`, `deleted`, `renamed`
   #
   # Strings are formatted as "∆2 +1 -3" by default.
-  ['staged', 'unstaged', 'added', 'modified', 'deleted'].forEach (type) ->
+  ['staged', 'unstaged', 'added', 'modified', 'deleted', 'renamed'].forEach (type) ->
     # Get an object that has filtered the statuses by type.
     git.register "_#{type}",
       update: (done) ->
@@ -165,7 +170,7 @@ module.exports = impromptu.plugin.create (git) ->
           done err, new Statuses statuses[type]
 
     # Get a string that represents the status.
-    # Format: "∆2 +1 -3"
+    # Format: "∆2 +1 -3 →2"
     git.register type,
       update: (done) ->
         git["_#{type}"] (err, statuses) ->
