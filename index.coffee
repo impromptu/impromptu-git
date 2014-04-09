@@ -66,6 +66,18 @@ module.exports = impromptu.plugin.create (git) ->
       impromptu.exec 'git symbolic-ref HEAD 2>/dev/null', (err) ->
         done err, !! err
 
+  git.register 'isRebasing',
+    update: (done) ->
+      git.root (err, root) ->
+        return done err if err
+        impromptu.exec "test -d #{root}/.git/rebase-merge -o -d #{root}/.git/rebase-apply", (err) ->
+          if not err
+            done null, true
+          else if err.code is 1
+            done null, false
+          else
+            done err, null
+
   git.register 'remoteBranch',
     update: (done) ->
       tracking_branch_command = "git for-each-ref --format='%(upstream:short)' $(git symbolic-ref -q HEAD)"
