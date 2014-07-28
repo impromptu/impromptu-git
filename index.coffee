@@ -1,3 +1,4 @@
+fs = require 'fs'
 path = require 'path'
 
 getStatuses = (porcelainStatus) ->
@@ -181,8 +182,12 @@ module.exports = (Impromptu, register, git) ->
     update: (done) ->
       git.root (err, root) ->
         return done err if err
-        Impromptu.exec "wc -l #{path.join root, '.git/logs/refs/stash'}", (err, count) ->
-          done err, parseInt count.trim(), 10
+
+        fs.exists path.join(root, '.git/logs/refs/stash'), (exists) ->
+          return done null, 0 unless exists
+
+          Impromptu.exec "wc -l #{path.join root, '.git/logs/refs/stash'}", (err, count) ->
+            done err, parseInt count.trim(), 10
 
   register 'remoteUrl',
     update: (done) ->
