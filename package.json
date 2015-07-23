@@ -22,16 +22,7 @@
     }
   ],
   "main": "index.js",
-  "scripts": {
-    "prepublish": "cake build",
-    "test": "mocha test/*.coffee --compilers coffee:coffee-script"
-  },
   "dependencies": {},
-  "devDependencies": {
-    "coffee-script": "~1.6.2",
-    "mocha": "~1.8.2",
-    "should": "~1.2.2"
-  },
   "peerDependencies": {
     "impromptu": "~0.2.0-beta.2"
   },
