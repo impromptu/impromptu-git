@@ -132,8 +132,7 @@ module.exports = impromptu.plugin.create(function(git) {
   // The remote branch name, if it exists
   git.register('remoteBranch', {
     update: function(done) {
-      var trackingBranchCommand = "git for-each-ref --format='%(upstream:short)'" +
-          " $(git symbolic-ref -q HEAD)"
+      var trackingBranchCommand = "git rev-parse --abbrev-ref --symbolic-full-name @{u}"
 
       impromptu.exec(trackingBranchCommand, function(err, result) {
         if (result) {
