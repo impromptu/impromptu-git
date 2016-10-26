@@ -259,9 +259,11 @@ module.exports = impromptu.plugin.create(function(git) {
   // Returns an array of objects with 'path', 'code', 'staged', 'state'
   //
   // This command *must* be passed through a formatter before its displayed
+  // We exclude any unstaged added files. Searching for them scans the entire repo and causes
+  // significant slow downs.
   git.register('_status', {
     update: function(done) {
-      impromptu.exec('git status --porcelain -z 2>/dev/null', function(err, result) {
+      impromptu.exec('git status -uno --porcelain -z 2>/dev/null', function(err, result) {
         if (err) {
           done(err, null)
           return
@@ -284,7 +286,7 @@ module.exports = impromptu.plugin.create(function(git) {
     git.register("_" + type, {
       update: function(done) {
         git._status(function(err, statuses) {
-          done(err, new Statuses(statuses[type]))
+          done(err, statuses ? new Statuses(statuses[type]) : null)
         })
       }
     })
@@ -294,7 +296,7 @@ module.exports = impromptu.plugin.create(function(git) {
     git.register(type, {
       update: function(done) {
         git["_" + type](function(err, statuses) {
-          done(err, statuses.toString())
+          done(err, statuses ? statuses.toString() : '')
         })
       }
     })
