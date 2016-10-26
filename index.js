@@ -303,7 +303,7 @@ module.exports = impromptu.plugin.create(function(git) {
   // Fetch information about the repository
   git.register('fetch', {
     cache: 'repository',
-    expire: 60,
+    expire: 600,
     update: function(done) {
       git.isRepo(function(err, isRepo) {
         if (!isRepo) {
